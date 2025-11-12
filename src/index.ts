@@ -35,8 +35,6 @@ const mutateChildren = (children: any[]) => {
       .filter((a) => a !== undefined);
   }
 
-  console.log("Doesn't meet the traditional children", children);
-
   if (!isArray && childrenType === 'object') {
     return {
       name: (children as { type?: { name?: string } })?.type?.name,
@@ -44,9 +42,7 @@ const mutateChildren = (children: any[]) => {
     };
   }
 
-  if (childrenType === 'string') {
-    return { name: children as string, type: 'dom' };
-  }
+  return { name: JSON.stringify(children) as string, type: 'dom' };
 };
 
 export const getFiberInstances = () => {
