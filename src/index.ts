@@ -36,13 +36,17 @@ const mutateChildren = (children: any[]) => {
   }
 
   if (!isArray && childrenType === 'object') {
-    return {
-      name: (children as { type?: { name?: string } })?.type?.name,
-      type: 'Component',
-    };
+      return {
+          name: children?.type?.name,
+          type: 'Component',
+      };
   }
 
-  return { name: JSON.stringify(children) as string, type: 'dom' };
+  if (typeof children === 'string') {
+      return { name: children, type: 'dom' };
+  }
+
+  return { name: 'unsupported:ref / cyclic', type: 'dom' };
 };
 
 export const getFiberInstances = () => {
@@ -59,15 +63,13 @@ export const getFiberInstances = () => {
     const component = getFiberNode(node);
     const state = component?.memoizedState;
     const propsKey = attr.find((k) => k.toLocaleLowerCase().includes('props'));
-    const props = (node as any)[propsKey || ''];
+    const props = { ...(node as any)[propsKey || ''] };
+    const componentName: string = component?.type?.name;
 
-    if (component != null) {
-      const componentName: string = component?.type?.name;
+    if (component != null && !!componentName) {
       values[componentName] = values[componentName] ?? [];
 
       const shouldMutateChildren = typeof props?.children === 'object';
-
-      delete props.ref;
       const baseState = { ...(state?.baseState ?? state?.memoizedState) };
       const previousState = state?.queue?.lastRenderedState ?? undefined;
 
@@ -81,6 +83,16 @@ export const getFiberInstances = () => {
 
       const current = JSON.stringify(baseState);
       const previous = JSON.stringify(previousState);
+
+      // Delete problematic keys
+      const propKeys = Object.keys(props);
+      for (const key of propKeys) {
+          if (props[key] instanceof HTMLElement) {
+              delete props[key];
+          }
+      }
+
+      delete props?.ref;
 
       values[componentName].push({
         state: {
